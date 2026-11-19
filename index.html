@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CivicCare – Report and track civic issues</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="nav"><div class="wrap">
+  <a class="brand" href="#/home"><span class="logo" aria-hidden="true">🏙️</span>CivicCare</a>
+  <nav aria-label="Main">
+    <a href="#/home" data-nav="home">Home</a>
+    <a href="#/report" data-nav="report">Report Issue</a>
+    <a href="#/track" data-nav="track">Track Complaint</a>
+    <a href="#/public" data-nav="public">Public Issues</a>
+    <a href="#/about" data-nav="about">About &amp; Contact</a>
+  </nav>
+</div></header>
+
+<main class="wrap">
+<!-- HOME -->
+<section class="page" id="page-home">
+  <div class="hero">
+    <div>
+      <h1>Let's Make Our Streets Better Together</h1>
+      <p>CivicCare lets you report potholes, broken streetlights, blocked drains, garbage and water problems in minutes, then follow each complaint until it is resolved.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#/report">📣 Report a Civic Issue</a>
+        <a class="btn btn-ghost" href="#/track">🔎 Track My Complaint</a>
+      </div>
+    </div>
+    <div class="hero-art"><div class="big">🏙️</div><h3>How it works</h3>
+      <ul><li>Describe the problem and where it is</li><li>Add a photo and GPS location if you can</li><li>Get a complaint ID and watch the status change</li></ul></div>
+  </div>
+  <div class="stats" aria-live="polite">
+    <div class="stat"><b id="st-total">–</b><span>Total complaints</span></div>
+    <div class="stat"><b id="st-resolved">–</b><span>Resolved</span></div>
+    <div class="stat"><b id="st-progress">–</b><span>In progress</span></div>
+  </div>
+  <h2>What Issue Did You Notice?</h2>
+  <p class="note">Pick one and we will start your report with the category filled in.</p>
+  <div class="cards" id="issue-cards"></div>
+</section>
+
+<!-- REPORT -->
+<section class="page" id="page-report">
+  <h1>Report an Issue</h1>
+  <p class="note">Fields marked <span class="req">*</span> are required.</p>
+  <form id="report-form" novalidate>
+    <div class="panel">
+      <h2>🧭 Issue information</h2>
+      <label for="category">Issue Category <span class="req">*</span></label>
+      <select id="category" name="category" required><option value="">Select a category</option>
+        <option>Roads</option><option>Streetlights</option><option>Drainage</option><option>Waste</option><option>Water</option><option>Other</option></select>
+      <label for="neighbourhood">Neighbourhood <span class="req">*</span></label>
+      <select id="neighbourhood" name="neighbourhood" required></select>
+      <input type="text" id="neighbourhood_other" name="neighbourhood_other" class="hidden" maxlength="80" placeholder="Type your neighbourhood" aria-label="Neighbourhood (other)" style="margin-top:10px">
+      <label for="title">Complaint Title <span class="req">*</span></label>
+      <input type="text" id="title" name="title" maxlength="120" placeholder="Enter a short title for the issue." required>
+      <label for="description">Detailed Description <span class="req">*</span></label>
+      <textarea id="description" name="description" maxlength="2000" placeholder="Explain the issue in detail, when it started and how it affects the public." required></textarea>
+      <label for="location_text">Street / Area / Landmark <span class="req">*</span></label>
+      <input type="text" id="location_text" name="location_text" maxlength="200" placeholder="Enter street name, area, nearby landmark or junction." required>
+    </div>
+
+    <div class="panel">
+      <h2>📷 Upload Photograph</h2>
+      <label for="photo">Upload Photograph (Optional, JPG/PNG/WEBP max 10 MB)</label>
+      <input type="file" id="photo" name="photo" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+      <div id="photo-name" class="note"></div><div id="photo-err" class="msg err hidden" role="alert"></div>
+      <img id="photo-preview" class="preview hidden" alt="Selected photograph preview">
+    </div>
+
+    <div class="panel private">
+      <h2>🔒 Citizen Contact Details (Private)</h2>
+      <p class="note">Your name and phone number are used only by officials to follow up. They are never shown on Public Issues or on the tracking page.</p>
+      <div class="grid2"><div><label for="full_name">Full Name <span class="req">*</span></label>
+        <input type="text" id="full_name" name="full_name" maxlength="80" autocomplete="name" required></div>
+        <div><label for="phone">Phone Number <span class="req">*</span></label>
+        <input type="tel" id="phone" name="phone" maxlength="20" autocomplete="tel" placeholder="e.g. 9876543210" required></div></div>
+    </div>
+
+    <div class="panel">
+      <h2>📍 GPS Location</h2>
+      <p class="note">Optional. Your browser will ask for permission before sharing your location. You can submit without it.</p>
+      <button type="button" class="btn btn-ghost" id="gps-btn">📍 Use My Current Location</button>
+      <input type="hidden" name="latitude" id="latitude"><input type="hidden" name="longitude" id="longitude">
+      <div id="gps-out" class="msg info hidden" role="status"></div>
+    </div>
+
+    <div id="form-err" class="msg err hidden" role="alert"></div>
+    <button type="submit" class="btn btn-primary btn-big" id="submit-btn">🚀 Submit Complaint</button>
+  </form>
+  <div class="panel success hidden" id="report-success">
+    <div class="tick">🎉</div><h2 style="justify-content:center">Complaint submitted</h2>
+    <p>Save this complaint ID to track progress:</p>
+    <div class="idbox" id="new-id"></div>
+    <div class="cta-row" style="justify-content:center">
+      <button class="btn btn-ghost" id="copy-id" type="button">📋 Copy complaint ID</button>
+      <button class="btn btn-primary" id="go-track" type="button">🔎 Track this complaint</button>
+      <button class="btn btn-ghost" id="another" type="button">Report another issue</button>
+    </div>
+    <div id="copy-msg" class="note" role="status"></div>
+  </div>
+</section>
+
+<!-- TRACK -->
+<section class="page" id="page-track">
+  <h1>Track Your Complaint</h1>
+  <form class="panel" id="track-form"><label for="track-id" style="margin-top:0">Complaint ID</label>
+    <div class="grid2" style="grid-template-columns:1fr auto"><input type="search" id="track-id" placeholder="e.g. CC-20261119-A7K2PX" autocomplete="off">
+    <button class="btn btn-primary" type="submit">Track</button></div></form>
+  <div id="track-err" class="msg err hidden" role="alert"></div>
+  <div class="panel hidden" id="track-result"></div>
+</section>
+
+<!-- PUBLIC -->
+<section class="page" id="page-public">
+  <h1>Public Issues</h1><p class="note">Issues reported by citizens. Personal details are never shown.</p>
+  <div class="filters">
+    <input type="search" id="f-search" placeholder="Search title, area or description" aria-label="Search issues">
+    <select id="f-cat" aria-label="Filter by category"><option value="">All categories</option><option>Roads</option><option>Streetlights</option><option>Drainage</option><option>Waste</option><option>Water</option><option>Other</option></select>
+    <select id="f-status" aria-label="Filter by status"><option value="">All statuses</option><option>Reported</option><option>In Progress</option><option>Resolved</option></select>
+  </div>
+  <div id="public-err" class="msg err hidden"></div>
+  <div class="pcards" id="public-list"></div>
+</section>
+
+<!-- ABOUT -->
+<section class="page" id="page-about">
+  <h1>About &amp; Contact</h1>
+  <div class="disclaimer">⚠️ CivicCare is a project demonstration. It is not an official government service. For emergencies, contact your local emergency number or municipal helpline.</div>
+  <div class="about-grid">
+    <div class="panel"><h2>🏙️ About CivicCare</h2><p>CivicCare is a public grievance and civic issue reporting system. Citizens report problems with roads, streetlights, drainage, waste and water supply, and everyone can see how those issues progress.</p></div>
+    <div class="panel"><h2>🎯 Project objective</h2><p>Make reporting simple, make progress visible, and protect citizens' privacy while doing it.</p></div>
+    <div class="panel"><h2>🤝 How it helps citizens</h2><p>Report in minutes with photo and GPS, get a unique ID, track status from Reported to Resolved, and browse issues in your neighbourhood.</p></div>
+    <div class="panel"><h2>✉️ Contact</h2><p>Email: <a href="mailto:support@example.com">support@example.com</a><br>Phone: +00 000 000 0000<br>Hours: Mon–Fri, 9:00–17:00<br><small>Replace these placeholder details before going live.</small></p></div>
+  </div>
+</section>
+</main>
+<footer>CivicCare – project demonstration, not an official government service. · <a href="/admin.html">Admin</a></footer>
+<script src="app.js"></script>
+</body>
+</html>

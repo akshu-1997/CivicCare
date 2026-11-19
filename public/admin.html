@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CivicCare Admin</title><meta name="robots" content="noindex">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>.row{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center}.tbl{display:grid;gap:12px}
+.item{background:#fff;border-radius:16px;padding:16px;box-shadow:var(--shadow);display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
+dialog{border:0;border-radius:24px;max-width:640px;width:92%;padding:26px;box-shadow:0 20px 60px rgba(30,27,75,.35)}dialog::backdrop{background:rgba(30,27,75,.5)}
+.adm-filters{display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:10px;margin:18px 0}@media(max-width:700px){.adm-filters,.item{grid-template-columns:1fr}}</style></head>
+<body>
+<header class="nav"><div class="wrap"><a class="brand" href="/"><span class="logo">🏙️</span>CivicCare Admin</a><button class="btn btn-ghost hidden" id="logout">Log out</button></div></header>
+<main class="wrap" style="padding:30px 20px 60px">
+<form class="panel" id="login" style="max-width:420px;margin:40px auto"><h2>🔐 Administrator login</h2>
+  <label for="pw">Password</label><input type="password" id="pw" autocomplete="current-password" style="width:100%;padding:12px 14px;border:2px solid var(--line);border-radius:14px;font:inherit">
+  <div id="login-err" class="msg err hidden" role="alert"></div><button class="btn btn-primary btn-big" style="margin-top:16px">Log in</button></form>
+<section id="dash" class="hidden"><h1>All complaints</h1>
+  <div class="adm-filters"><input type="search" id="a-search" placeholder="Search ID, title, area or name" aria-label="Search" style="padding:12px;border:2px solid var(--line);border-radius:14px;font:inherit">
+    <select id="a-cat" aria-label="Category" style="padding:12px;border:2px solid var(--line);border-radius:14px;font:inherit"><option value="">All categories</option><option>Roads</option><option>Streetlights</option><option>Drainage</option><option>Waste</option><option>Water</option><option>Other</option></select>
+    <select id="a-status" aria-label="Status" style="padding:12px;border:2px solid var(--line);border-radius:14px;font:inherit"><option value="">All statuses</option><option>Reported</option><option>In Progress</option><option>Resolved</option></select>
+    <button class="btn btn-primary" id="a-go">Apply</button></div>
+  <div id="a-err" class="msg err hidden"></div><div id="a-count" class="note"></div><div class="tbl" id="a-list"></div></section>
+</main>
+<dialog id="dlg"><div id="dlg-body"></div><div class="cta-row"><button class="btn btn-ghost" id="dlg-close">Close</button></div></dialog>
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const badge = s => `<span class="badge b-${esc(s).replace(/ /g,'-')}">${esc(s)}</span>`;
+  const fmt = d => new Date(d).toLocaleString();
+  let token = sessionStorage.getItem('cc_admin'), rows = [], photoUrl = null;
+  const headers = (j) => ({ Authorization: 'Bearer ' + token, ...(j ? { 'Content-Type': 'application/json' } : {}) });
+  async function call(url, opts = {}) {
+    const res = await fetch(url, opts); const data = await res.json().catch(() => ({}));
+    if (res.status === 401 && token) { logout(); throw new Error('Session expired. Log in again.'); }
+    if (!res.ok) throw new Error(data.error || 'Request failed.'); return data;
+  }
+  function logout() { token = null; sessionStorage.removeItem('cc_admin'); $('#dash').classList.add('hidden'); $('#login').classList.remove('hidden'); $('#logout').classList.add('hidden'); }
+  function enter() { $('#login').classList.add('hidden'); $('#dash').classList.remove('hidden'); $('#logout').classList.remove('hidden'); load(); }
+  $('#login').addEventListener('submit', async e => {
+    e.preventDefault(); const err = $('#login-err');
+    try { const r = await call('/api/admin/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: $('#pw').value }) });
+      token = r.token; sessionStorage.setItem('cc_admin', token); $('#pw').value = ''; err.classList.add('hidden'); enter();
+    } catch (ex) { err.textContent = ex.message; err.classList.remove('hidden'); }
+  });
+  $('#logout').onclick = logout;
+  async function load() {
+    const q = new URLSearchParams({ search: $('#a-search').value, category: $('#a-cat').value, status: $('#a-status').value });
+    try { rows = await call('/api/admin/complaints?' + q, { headers: headers() }); $('#a-err').classList.add('hidden'); render(); }
+    catch (ex) { $('#a-err').textContent = ex.message; $('#a-err').classList.remove('hidden'); }
+  }
+  function render() {
+    $('#a-count').textContent = rows.length + ' complaint(s)';
+    $('#a-list').innerHTML = rows.length ? rows.map(c => `<div class="item"><div><b>${esc(c.title)}</b> ${badge(c.status)}<br><small>${esc(c.id)} · ${esc(c.category)} · ${esc(c.neighbourhood)} · ${fmt(c.created_at)}</small></div>
+      <div><button class="btn btn-ghost" data-id="${esc(c.id)}">View / manage</button></div></div>`).join('') : '<div class="empty">No complaints found.</div>';
+  }
+  $('#a-list').addEventListener('click', e => { const b = e.target.closest('[data-id]'); if (b) open(b.dataset.id); });
+  $('#a-go').onclick = load; $('#a-search').addEventListener('keydown', e => e.key === 'Enter' && load());
+  async function open(id) {
+    const c = rows.find(r => r.id === id); if (!c) return;
+    $('#dlg-body').innerHTML = `<h2>${esc(c.title)}</h2><dl class="det"><dt>ID</dt><dd>${esc(c.id)}</dd><dt>Category</dt><dd>${esc(c.category)}</dd>
+      <dt>Neighbourhood</dt><dd>${esc(c.neighbourhood)}</dd><dt>Street / landmark</dt><dd>${esc(c.location_text)}</dd>
+      <dt>GPS</dt><dd>${c.latitude != null ? `<a target="_blank" rel="noopener" href="https://www.openstreetmap.org/?mlat=${c.latitude}&mlon=${c.longitude}#map=17/${c.latitude}/${c.longitude}">${c.latitude}, ${c.longitude}</a>` : 'Not provided'}</dd>
+      <dt>Description</dt><dd>${esc(c.description)}</dd><dt>Citizen (private)</dt><dd>${esc(c.full_name)} · ${esc(c.phone)}</dd>
+      <dt>Submitted</dt><dd>${fmt(c.created_at)}</dd><dt>Status</dt><dd><select id="st" aria-label="Status" style="padding:8px;border-radius:10px;border:2px solid var(--line);font:inherit">
+      ${['Reported','In Progress','Resolved'].map(s => `<option ${s === c.status ? 'selected' : ''}>${s}</option>`).join('')}</select>
+      <button class="btn btn-primary" id="st-save" style="padding:8px 18px">Update</button> <span id="st-msg" role="status"></span></dd></dl><div id="ph"></div>`;
+    $('#dlg').showModal();
+    $('#st-save').onclick = async () => {
+      try { await call(`/api/admin/complaints/${encodeURIComponent(c.id)}/status`, { method: 'PATCH', headers: headers(true), body: JSON.stringify({ status: $('#st').value }) });
+        c.status = $('#st').value; $('#st-msg').textContent = 'Saved ✓'; render(); } catch (ex) { $('#st-msg').textContent = ex.message; }
+    };
+    if (c.has_photo) {
+      try { const r = await fetch(`/api/admin/complaints/${encodeURIComponent(c.id)}/photo`, { headers: headers() }); if (!r.ok) throw 0;
+        if (photoUrl) URL.revokeObjectURL(photoUrl); photoUrl = URL.createObjectURL(await r.blob());
+        $('#ph').innerHTML = `<img class="preview" style="max-width:100%;max-height:320px" src="${photoUrl}" alt="Citizen photograph">`;
+      } catch (e) { $('#ph').textContent = 'Photograph could not be loaded.'; }
+    } else $('#ph').innerHTML = '<small>No photograph uploaded.</small>';
+  }
+  $('#dlg-close').onclick = () => $('#dlg').close();
+  if (token) enter();
+})();
+</script></body></html>
